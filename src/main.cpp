@@ -258,7 +258,7 @@ void enterDeepSleep(bool fromTimeout = false) {
        SETTINGS.quickResumeSleepScreen == CrossPointSettings::QUICK_RESUME_SLEEP_SCREEN::QUICK_RESUME_AFTER_TIMEOUT);
   // Every sleep mode leaves a complete retained frame on the e-ink panel. Keep
   // it visible until the first useful reader or home paint replaces it.
-  APP_STATE.showBootScreen = false;
+  APP_STATE.showBootScreen = true;
 
   APP_STATE.saveToFile();
 
