@@ -158,6 +158,7 @@ class SettingsActivity final : public UiTabListActivity {
   std::vector<SettingInfo> readerSettings;
   std::vector<SettingInfo> controlsSettings;
   std::vector<SettingInfo> systemSettings;
+  std::vector<SettingInfo> mylaSettings;
   const std::vector<SettingInfo>* currentSettings = nullptr;
 
   bool preserveQuickResumeTimeoutOn = false;
@@ -175,14 +176,15 @@ class SettingsActivity final : public UiTabListActivity {
   std::vector<freeink::ui::ListItem> rowItems_;
   void rebuildRowItems();
 
-  static constexpr int categoryCount = 4;
-  static const StrId categoryNames[categoryCount];
+  static constexpr int maxCategoryCount = 5;
+  static const StrId allCategoryNames[maxCategoryCount];
+  int activeCategoryCount = 4;
 
   // --- UiTabListActivity contract ---
   int listCount() const override { return settingsCount; }
-  int tabCount() const override { return categoryCount; }
+  int tabCount() const override { return activeCategoryCount; }
   int activeTab() const override { return selectedCategoryIndex; }
-  const char* tabLabel(int index) const override { return I18N.get(categoryNames[index]); }
+  const char* tabLabel(int index) const override { return I18N.get(allCategoryNames[index]); }
   void buildScreen(UiScreen& screen) override;
   void activateIndex(int index) override;
   void onTabAction(int index) override;

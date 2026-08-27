@@ -12,9 +12,12 @@
 
 #include "CrossPointSettings.h"
 #include "components/UITheme.h"
+#include "components/themes/myla_cute/MyLaCuteTheme.h"
 #include "fontIds.h"
 
 namespace {
+constexpr char CUSTOM_WALLPAPER_ROOT_PNG[] = "/wallpaper.png";
+constexpr char CUSTOM_WALLPAPER_ROOT_BMP[] = "/wallpaper.bmp";
 constexpr char CUSTOM_SLEEP_ROOT_BMP[] = "/sleep.bmp";
 constexpr char TRANSPARENT_SLEEP_ROOT_BMP[] = "/sleep-overlay.bmp";
 constexpr char TRANSPARENT_SLEEP_ROOT_PNG[] = "/sleep-overlay.png";
@@ -65,6 +68,11 @@ void BmpViewerActivity::loadSiblingImages() {
   }
 }
 
+bool BmpViewerActivity::canSetHomeWallpaper() const {
+  return (SETTINGS.uiTheme == static_cast<int>(CrossPointSettings::UI_THEME::MYLA_CUTE)) &&
+         (FsHelpers::hasBmpExtension(filePath) || FsHelpers::hasPngExtension(filePath));
+}
+
 bool BmpViewerActivity::canSetSleepCover() const {
   return FsHelpers::hasBmpExtension(filePath) ||
          (SETTINGS.sleepScreen == CrossPointSettings::SLEEP_SCREEN_MODE::TRANSPARENT_CUSTOM &&
@@ -103,8 +111,12 @@ void BmpViewerActivity::onEnter() {
     const bool hasPrevious = siblingImages.size() > 1 && currentImageIndex > 0;
     const bool hasNext = siblingImages.size() > 1 && currentImageIndex != -1 &&
                          currentImageIndex < static_cast<int>(siblingImages.size()) - 1;
-    const auto labels = mappedInput.mapLabels(tr(STR_BACK), canSetSleepCover() ? tr(STR_SET_SLEEP_COVER) : "",
-                                              hasPrevious ? "<" : "", hasNext ? ">" : "");
+    const bool canWp = canSetHomeWallpaper();
+    const bool canSc = canSetSleepCover();
+    const char* actionHint = (canWp && canSc)
+                                 ? tr(STR_SELECT)
+                                 : (canWp ? tr(STR_SET_HOME_WALLPAPER) : (canSc ? tr(STR_SET_SLEEP_COVER) : ""));
+    const auto labels = mappedInput.mapLabels(tr(STR_BACK), actionHint, hasPrevious ? "<" : "", hasNext ? ">" : "");
     if (renderPng()) {
       GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
       renderer.displayBuffer(HalDisplay::FAST_REFRESH);
@@ -149,20 +161,21 @@ void BmpViewerActivity::onEnter() {
       bool hasNext = (siblingImages.size() > 1 && currentImageIndex != -1 &&
                       currentImageIndex < static_cast<int>(siblingImages.size()) - 1);
 
-      const auto labels = mappedInput.mapLabels(tr(STR_BACK), canSetSleepCover() ? tr(STR_SET_SLEEP_COVER) : "",
-                                                (hasPrevious ? "<" : ""), (hasNext ? ">" : ""));
+      const bool canWp = canSetHomeWallpaper();
+      const bool canSc = canSetSleepCover();
+      const char* actionHint = (canWp && canSc)
+                                   ? tr(STR_SELECT)
+                                   : (canWp ? tr(STR_SET_HOME_WALLPAPER) : (canSc ? tr(STR_SET_SLEEP_COVER) : ""));
+      const auto labels =
+          mappedInput.mapLabels(tr(STR_BACK), actionHint, (hasPrevious ? "<" : ""), (hasNext ? ">" : ""));
 
       GUI.fillPopupProgress(renderer, popupRect, 50);
 
       renderer.clearScreen();
-      // Assuming drawBitmap defaults to 0,0 crop if omitted, or pass explicitly: drawBitmap(bitmap, x, y, pageWidth,
-      // pageHeight, 0, 0)
       renderer.drawBitmap(bitmap, x, y, pageWidth, pageHeight, 0, 0);
 
       // Draw UI hints on the base layer
       GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
-      // Single pass for non-grayscale images
-
       renderer.displayBuffer(HalDisplay::FAST_REFRESH);
 
     } else {
@@ -189,6 +202,51 @@ void BmpViewerActivity::onExit() {
   Activity::onExit();
   renderer.clearScreen();
   renderer.displayBuffer(HalDisplay::HALF_REFRESH);
+}
+
+void BmpViewerActivity::doSetHomeWallpaper() {
+  GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
+
+  const bool isPng = FsHelpers::hasPngExtension(filePath);
+  const char* destination = isPng ? CUSTOM_WALLPAPER_ROOT_PNG : CUSTOM_WALLPAPER_ROOT_BMP;
+  const char* otherDestination = isPng ? CUSTOM_WALLPAPER_ROOT_BMP : CUSTOM_WALLPAPER_ROOT_PNG;
+
+  bool success = (filePath == destination);
+
+  if (!success) {
+    auto buffer = makeUniqueNoThrow<uint8_t[]>(COPY_BUFFER_SIZE);
+    if (!buffer) {
+      LOG_ERR("IMG", "OOM: wallpaper copy buffer");
+    } else {
+      HalFile inFile, outFile;
+      if (Storage.openFileForRead("IMG", filePath, inFile) && Storage.openFileForWrite("IMG", destination, outFile)) {
+        int bytesRead;
+        success = true;
+        while ((bytesRead = inFile.read(buffer.get(), COPY_BUFFER_SIZE)) > 0) {
+          if (outFile.write(buffer.get(), static_cast<size_t>(bytesRead)) != static_cast<size_t>(bytesRead)) {
+            success = false;
+            break;
+          }
+        }
+        if (bytesRead < 0) success = false;
+        outFile.close();
+      }
+      inFile.close();
+    }
+  }
+
+  if (success) {
+    if (Storage.exists(otherDestination)) {
+      Storage.remove(otherDestination);
+    }
+    MyLaCuteTheme::invalidateWallpaperCache();
+    GUI.drawPopup(renderer, tr(STR_DONE));
+  } else {
+    GUI.drawPopup(renderer, tr(STR_FAILED_LOWER));
+  }
+
+  delay(1000);
+  onEnter();
 }
 
 void BmpViewerActivity::doSetSleepCover() {
@@ -239,6 +297,19 @@ void BmpViewerActivity::loop() {
   // Keep CPU awake/polling so 1st click works
   Activity::loop();
 
+  if (optionPopup.handleInput(mappedInput, [this] {
+        if (optionPopup.isActive()) {
+          optionPopup.processRender(renderer, mappedInput);
+        } else {
+          onEnter();
+        }
+      })) {
+    return;
+  }
+  if (optionPopup.isActive()) {
+    return;
+  }
+
   auto openSibling = [this](const int delta) {
     if (currentImageIndex < 0) {
       return false;
@@ -271,7 +342,23 @@ void BmpViewerActivity::loop() {
   }
 
   if (mappedInput.wasReleased(MappedInputManager::Button::Confirm)) {
-    if (canSetSleepCover()) doSetSleepCover();
+    const bool canWp = canSetHomeWallpaper();
+    const bool canSc = canSetSleepCover();
+    if (canWp && canSc) {
+      static constexpr StrId optionIds[] = {StrId::STR_SET_HOME_WALLPAPER, StrId::STR_SET_SLEEP_COVER};
+      optionPopup.show(StrId::STR_SETTINGS_TITLE, optionIds, 2, 0, [this](int idx) {
+        if (idx == 0) {
+          doSetHomeWallpaper();
+        } else {
+          doSetSleepCover();
+        }
+      });
+      optionPopup.processRender(renderer, mappedInput);
+    } else if (canWp) {
+      doSetHomeWallpaper();
+    } else if (canSc) {
+      doSetSleepCover();
+    }
     return;
   }
 

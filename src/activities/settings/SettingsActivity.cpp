@@ -32,8 +32,8 @@
 
 namespace fui = freeink::ui;
 
-const StrId SettingsActivity::categoryNames[categoryCount] = {StrId::STR_CAT_DISPLAY, StrId::STR_CAT_READER,
-                                                              StrId::STR_CAT_CONTROLS, StrId::STR_CAT_SYSTEM};
+const StrId SettingsActivity::allCategoryNames[maxCategoryCount] = {
+    StrId::STR_CAT_DISPLAY, StrId::STR_CAT_READER, StrId::STR_CAT_CONTROLS, StrId::STR_CAT_SYSTEM, StrId::STR_CAT_MYLA};
 
 SettingsActivity::SettingsActivity(GfxRenderer& renderer, MappedInputManager& mappedInput)
     : UiTabListActivity("Settings", renderer, mappedInput) {}
@@ -43,6 +43,14 @@ void SettingsActivity::rebuildSettingsLists() {
   readerSettings.clear();
   controlsSettings.clear();
   systemSettings.clear();
+  mylaSettings.clear();
+
+  const bool isMylaTheme = (SETTINGS.uiTheme == static_cast<int>(CrossPointSettings::UI_THEME::MYLA_CUTE));
+  activeCategoryCount = isMylaTheme ? 5 : 4;
+  if (selectedCategoryIndex >= activeCategoryCount) {
+    selectedCategoryIndex = activeCategoryCount - 1;
+  }
+  tabNavs.resize(activeCategoryCount);
 
   // Pick up any fonts uploaded/deleted over the web server since the last
   // reader activity ran — otherwise the font-family picker shows stale list.
@@ -75,6 +83,10 @@ void SettingsActivity::rebuildSettingsLists() {
       controlsSettings.push_back(setting);
     } else if (setting.category == StrId::STR_CAT_SYSTEM) {
       systemSettings.push_back(setting);
+    } else if (setting.category == StrId::STR_CAT_MYLA) {
+      if (isMylaTheme) {
+        mylaSettings.push_back(setting);
+      }
     }
   }
 
@@ -92,6 +104,8 @@ void SettingsActivity::rebuildSettingsLists() {
   systemSettings.push_back(SettingInfo::Action(StrId::STR_CHECK_UPDATES, SettingAction::CheckForUpdates));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_SD_FIRMWARE_UPDATE, SettingAction::SdFirmwareUpdate));
   systemSettings.push_back(SettingInfo::Action(StrId::STR_LANGUAGE, SettingAction::Language));
+  systemSettings.push_back(
+      SettingInfo::DynamicString(StrId::STR_VERSION, []() -> std::string { return CROSSPOINT_VERSION; }, nullptr));
   readerSettings.insert(readerSettings.begin(),
                         SettingInfo::Action(StrId::STR_TEXT_SETTINGS, SettingAction::TextSettings));
   readerSettings.insert(readerSettings.begin() + 1,
@@ -99,22 +113,7 @@ void SettingsActivity::rebuildSettingsLists() {
   readerSettings.push_back(SettingInfo::Action(StrId::STR_CUSTOMISE_STATUS_BAR, SettingAction::CustomiseStatusBar));
 
   // Update currentSettings pointer and count for the active category
-  switch (selectedCategoryIndex) {
-    case 0:
-      currentSettings = &displaySettings;
-      break;
-    case 1:
-      currentSettings = &readerSettings;
-      break;
-    case 2:
-      currentSettings = &controlsSettings;
-      break;
-    case 3:
-      currentSettings = &systemSettings;
-      break;
-  }
-  settingsCount = static_cast<int>(currentSettings->size());
-  rebuildRowItems();
+  selectCategory(selectedCategoryIndex);
 }
 
 void SettingsActivity::onEnter() {
@@ -145,6 +144,12 @@ void SettingsActivity::selectCategory(const int categoryIndex) {
       break;
     case 3:
       currentSettings = &systemSettings;
+      break;
+    case 4:
+      currentSettings = &mylaSettings;
+      break;
+    default:
+      currentSettings = &displaySettings;
       break;
   }
   settingsCount = static_cast<int>(currentSettings->size());
@@ -200,6 +205,7 @@ void SettingsActivity::applyUiSettingChange(uint8_t CrossPointSettings::* valueP
     return;
   }
   UITheme::getInstance().reload();
+  rebuildSettingsLists();
   // Re-derive the shared tokens for the new look; the gate stays closed until
   // the repaint that rebuilds the interaction table in the new layout.
   resetUi();
@@ -213,8 +219,8 @@ void SettingsActivity::stepTab(const int direction) {
   // Ring position 0 stays on the tab bar; a row selection collapses to the
   // new category's first row (per-tab memory is deliberately not kept here).
   const bool onTabBar = ringPos() == 0;
-  selectedCategoryIndex = direction > 0 ? ButtonNavigator::nextIndex(selectedCategoryIndex, categoryCount)
-                                        : ButtonNavigator::previousIndex(selectedCategoryIndex, categoryCount);
+  selectedCategoryIndex = direction > 0 ? ButtonNavigator::nextIndex(selectedCategoryIndex, activeCategoryCount)
+                                        : ButtonNavigator::previousIndex(selectedCategoryIndex, activeCategoryCount);
   selectCategory(selectedCategoryIndex);
   activeNav().selected = onTabBar ? 0 : 1;
   requestUpdate();
@@ -450,6 +456,15 @@ std::string SettingsActivity::settingValueText(const SettingInfo& setting) {
     }
     return std::to_string(SETTINGS.*(setting.valuePtr));
   }
+  if (setting.type == SettingType::STRING) {
+    if (setting.stringGetter) {
+      return setting.stringGetter();
+    }
+    if (setting.stringOffset > 0) {
+      return reinterpret_cast<const char*>((size_t)&SETTINGS + setting.stringOffset);
+    }
+    return "";
+  }
   return "";
 }
 
@@ -499,18 +514,16 @@ void SettingsActivity::render(RenderLock&&) {
 
   // Header via GUI.drawHeader (already FreeInkUI-themed) for the battery
   // indicator; the rest of the screen renders through the app.
-  // Version rides in the header's trailing label slot: the footer position
-  // conflicts with button hints on non-touch devices.
-  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, tr(STR_SETTINGS_TITLE),
-                 CROSSPOINT_VERSION);
+  GUI.drawHeader(renderer, Rect{0, metrics.topPadding, pageWidth, metrics.headerHeight}, tr(STR_SETTINGS_TITLE));
 
   renderUi();
 
   const int ring = ringPos();
   const auto confirmLabel =
-      (ring == 0) ? I18N.get(categoryNames[(selectedCategoryIndex + 1) % categoryCount])
-                  : (ring > 0 && (*currentSettings)[ring - 1].nameId == StrId::STR_TIME_TO_SLEEP ? tr(STR_SELECT)
-                                                                                                 : tr(STR_TOGGLE));
+      (ring == 0) ? I18N.get(allCategoryNames[(selectedCategoryIndex + 1) % activeCategoryCount])
+                  : (ring > 0 && (*currentSettings)[ring - 1].nameId == StrId::STR_TIME_TO_SLEEP
+                         ? tr(STR_SELECT)
+                         : ((*currentSettings)[ring - 1].type == SettingType::STRING ? "" : tr(STR_TOGGLE)));
 
   const auto labels = mappedInput.mapLabels(tr(STR_BACK), confirmLabel, tr(STR_DIR_UP), tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);

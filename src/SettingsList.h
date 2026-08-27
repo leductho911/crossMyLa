@@ -236,7 +236,7 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
             "refreshFrequency", StrId::STR_CAT_DISPLAY),
         SettingInfo::Enum(StrId::STR_UI_THEME, &CrossPointSettings::uiTheme,
                           {StrId::STR_THEME_CLASSIC, StrId::STR_THEME_LYRA, StrId::STR_THEME_LYRA_EXTENDED,
-                           StrId::STR_THEME_ROUNDEDRAFF},
+                           StrId::STR_THEME_ROUNDEDRAFF, StrId::STR_THEME_MYLA_CUTE},
                           "uiTheme", StrId::STR_CAT_DISPLAY),
         SettingInfo::Toggle(StrId::STR_SUNLIGHT_FADING_FIX, &CrossPointSettings::fadingFix, "fadingFix",
                             StrId::STR_CAT_DISPLAY),
@@ -341,6 +341,12 @@ inline std::vector<SettingInfo> getSettingsList(const SdCardFontRegistry* regist
                             "removeReadBooksFromRecents", StrId::STR_CAT_SYSTEM),
         SettingInfo::Toggle(StrId::STR_MOVE_FINISHED_TO_READ, &CrossPointSettings::moveFinishedToReadFolder,
                             "moveFinishedToReadFolder", StrId::STR_CAT_SYSTEM),
+
+        // --- MyLa Cute ---
+        SettingInfo::Enum(StrId::STR_DISPLAY_MODE, &CrossPointSettings::mylaDisplayMode,
+                          {StrId::STR_DEFAULT_VALUE, StrId::STR_MODE_ICON}, "mylaDisplayMode", StrId::STR_CAT_MYLA),
+        SettingInfo::Enum(StrId::STR_MENU_POSITION, &CrossPointSettings::mylaMenuPosition,
+                          {StrId::STR_TOP_LEFT, StrId::STR_BOTTOM_LEFT}, "mylaMenuPosition", StrId::STR_CAT_MYLA),
 
         // OPDS download folder: persisted + web-exposed, but category-less so it
         // is hidden from the on-device Settings screen (edited via OPDS UI).

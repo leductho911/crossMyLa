@@ -165,7 +165,11 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   };
 
   // UI Theme
-  enum UI_THEME { CLASSIC = 0, LYRA = 1, LYRA_3_COVERS = 2, ROUNDEDRAFF = 3 };
+  enum UI_THEME { CLASSIC = 0, LYRA = 1, LYRA_3_COVERS = 2, ROUNDEDRAFF = 3, MYLA_CUTE = 4 };
+
+  // MyLa Cute Theme Settings
+  enum MYLA_DISPLAY_MODE { MYLA_DISPLAY_DEFAULT = 0, MYLA_DISPLAY_ICON = 1, MYLA_DISPLAY_MODE_COUNT };
+  enum MYLA_MENU_POSITION { MYLA_MENU_TOP_LEFT = 0, MYLA_MENU_BOTTOM_LEFT = 1, MYLA_MENU_POSITION_COUNT };
 
   // Image rendering in EPUB reader
   enum IMAGE_RENDERING { IMAGES_DISPLAY = 0, IMAGES_PLACEHOLDER = 1, IMAGES_SUPPRESS = 2, IMAGE_RENDERING_COUNT };
@@ -268,6 +272,10 @@ class CrossPointSettings : public PersistableStore<CrossPointSettings> {
   uint8_t longPressMenuFunction = LP_MENU_DISABLED;
   // UI Theme
   uint8_t uiTheme = LYRA;
+  // MyLa Cute Theme Display Mode
+  uint8_t mylaDisplayMode = MYLA_DISPLAY_DEFAULT;
+  // MyLa Cute Theme Menu Position
+  uint8_t mylaMenuPosition = MYLA_MENU_TOP_LEFT;
   // Sunlight fading compensation
   uint8_t fadingFix = 0;
   // Power button return from footnotes (1 = enabled, 0 = disabled)

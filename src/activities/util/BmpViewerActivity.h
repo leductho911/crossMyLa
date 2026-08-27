@@ -5,6 +5,7 @@
 
 #include "MappedInputManager.h"
 #include "activities/Activity.h"
+#include "components/OptionPopup.h"
 
 class BmpViewerActivity final : public Activity {
  public:
@@ -18,9 +19,12 @@ class BmpViewerActivity final : public Activity {
   void loadSiblingImages();
   void doSetSleepCover();
   bool canSetSleepCover() const;
+  void doSetHomeWallpaper();
+  bool canSetHomeWallpaper() const;
   bool renderPng();
 
   std::string filePath;
   std::vector<std::string> siblingImages;
   int currentImageIndex = -1;
+  OptionPopup optionPopup;
 };

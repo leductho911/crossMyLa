@@ -230,6 +230,7 @@ class BaseTheme {
   // grid from this, so hit bands always match the visuals (RoundedRaff derives
   // its row height from the font, not the metrics table).
   virtual int getMenuRowHeight(const GfxRenderer& renderer) const;
+  virtual int getMenuTop(const GfxRenderer& renderer, int menuCount) const;
   virtual int getListRowStep(bool hasSubtitle) const;
   virtual int getListPageItems(int contentHeight, bool hasSubtitle) const;
   virtual void drawList(const GfxRenderer& renderer, Rect rect, int itemCount, int selectedIndex,

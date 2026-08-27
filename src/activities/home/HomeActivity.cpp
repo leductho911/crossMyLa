@@ -54,6 +54,11 @@ void HomeActivity::loadRecentBooks(int maxBooks) {
 }
 
 void HomeActivity::loadRecentCovers(int coverHeight) {
+  if (coverHeight <= 0) {
+    recentsLoaded = true;
+    recentsLoading = false;
+    return;
+  }
   recentsLoading = true;
   bool showingLoading = false;
   Rect popupRect;
@@ -201,23 +206,23 @@ void HomeActivity::loop() {
 
   buttonNavigator.onNext([this, menuCount] {
     selectorIndex = ButtonNavigator::nextIndex(selectorIndex, menuCount);
-    requestUpdate();
+    requestUpdate(true);
   });
 
   buttonNavigator.onPrevious([this, menuCount] {
     selectorIndex = ButtonNavigator::previousIndex(selectorIndex, menuCount);
-    requestUpdate();
+    requestUpdate(true);
   });
 
   const auto swipe = mappedInput.wasSwipe();
   if (swipe == MappedInputManager::SwipeDir::Up) {
     selectorIndex = ButtonNavigator::nextIndex(selectorIndex, menuCount);
-    requestUpdate();
+    requestUpdate(true);
     return;
   }
   if (swipe == MappedInputManager::SwipeDir::Down) {
     selectorIndex = ButtonNavigator::previousIndex(selectorIndex, menuCount);
-    requestUpdate();
+    requestUpdate(true);
     return;
   }
 
@@ -249,11 +254,11 @@ void HomeActivity::loop() {
     return;
   }
 
-  const int menuTop = metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset;
   const int renderedMenuSelection =
       metrics.homeContinueReadingInMenu ? selectorIndex : selectorIndex - recentBooks.size();
   const int renderedMenuCount =
       menuCount - (metrics.homeContinueReadingInMenu ? 0 : static_cast<int>(recentBooks.size()));
+  const int menuTop = GUI.getMenuTop(renderer, renderedMenuCount);
   int menuRow = -1;
   // Row height from the theme, not the metrics table: RoundedRaff draws
   // font-derived rows and the touch grid must match the visuals exactly.
@@ -322,11 +327,9 @@ void HomeActivity::render(RenderLock&&) {
     menuIcons.insert(menuIcons.begin(), Book);
   }
 
+  const int menuTop = GUI.getMenuTop(renderer, static_cast<int>(menuItems.size()));
   GUI.drawButtonMenu(
-      renderer,
-      Rect{0, metrics.homeTopPadding + metrics.homeCoverTileHeight + metrics.homeMenuTopOffset, pageWidth,
-           pageHeight - (metrics.headerHeight + metrics.homeTopPadding + metrics.verticalSpacing +
-                         metrics.homeMenuTopOffset + metrics.buttonHintsHeight)},
+      renderer, Rect{0, menuTop, pageWidth, pageHeight - menuTop - (gpio.hasTouch() ? 0 : metrics.buttonHintsHeight)},
       static_cast<int>(menuItems.size()),
       metrics.homeContinueReadingInMenu ? selectorIndex : selectorIndex - recentBooks.size(),
       [&menuItems](int index) { return std::string(menuItems[index]); },

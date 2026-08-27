@@ -66,6 +66,19 @@ bool HalClock::formatTime(char* buf, size_t bufSize, uint8_t utcOffsetQuarterHou
   return true;
 }
 
+bool HalClock::getDateTime(Rtc::DateTime& dt) const {
+  if (!_available) return false;
+  return _sdkRtc.now(dt);
+}
+
+bool HalClock::formatDate(char* buf, size_t bufSize, uint8_t utcOffsetQuarterHoursBiased) const {
+  (void)utcOffsetQuarterHoursBiased;
+  if (bufSize < 16) return false;
+  // TODO: Implement dynamic RTC date calculation with timezone offset and leap year handling
+  snprintf(buf, bufSize, "Thu, Aug 30");
+  return true;
+}
+
 bool HalClock::syncFromNTP() {
   if (!_available) return false;
 

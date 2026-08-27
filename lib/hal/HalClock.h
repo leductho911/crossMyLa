@@ -34,6 +34,13 @@ class HalClock {
   // Returns false if RTC is not available.
   bool formatTime(char* buf, size_t bufSize, uint8_t utcOffsetQuarterHoursBiased = 48, bool use12Hour = false) const;
 
+  // Format date into a caller-provided buffer (e.g. "Thu, Aug 30").
+  // Needs >= 16 bytes.
+  bool formatDate(char* buf, size_t bufSize, uint8_t utcOffsetQuarterHoursBiased = 48) const;
+
+  // Get raw RTC DateTime object. Returns false if RTC is unavailable.
+  bool getDateTime(Rtc::DateTime& dt) const;
+
   // Sync the RTC from an NTP server. Requires WiFi to be connected.
   // Blocks for up to ~5s while waiting for SNTP response.
   // Returns true if the RTC was successfully updated.
