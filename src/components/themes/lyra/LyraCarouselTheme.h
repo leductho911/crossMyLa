@@ -3,20 +3,22 @@
 #include <atomic>
 #include <vector>
 
-#include "components/themes/lyra/LyraTheme.h"
+#include "LyraTheme.h"
 
 class GfxRenderer;
 
 namespace LyraCarouselMetrics {
 constexpr ThemeMetrics makeValues() {
   ThemeMetrics v = LyraMetrics::values;
+  v.topPadding = 5;
+  v.batteryBarHeight = 36;
+  v.homeTopPadding = 48;
+  v.homeCoverHeight = 600;
+  v.homeCoverTileHeight = 620;
+  v.homeRecentBooksCount = 5;
   v.listRowHeight = 35;
   v.menuRowHeight = 64;
   v.menuSpacing = 8;
-  v.homeTopPadding = 28;
-  v.homeCoverHeight = 600;
-  v.homeCoverTileHeight = 660;
-  v.homeRecentBooksCount = 5;
   v.keyboardKeyHeight = 56;
   v.keyboardCenteredText = true;
   return v;
