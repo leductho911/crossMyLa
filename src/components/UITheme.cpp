@@ -12,6 +12,7 @@
 #include "RecentBooksStore.h"
 #include "components/themes/BaseTheme.h"
 #include "components/themes/lyra/Lyra3CoversTheme.h"
+#include "components/themes/lyra/LyraCarouselTheme.h"
 #include "components/themes/lyra/LyraTheme.h"
 #include "components/themes/roundedraff/RoundedRaffTheme.h"
 
@@ -48,6 +49,11 @@ void UITheme::setTheme(CrossPointSettings::UI_THEME type) {
       LOG_DBG("UI", "Using Lyra 3 Covers theme");
       currentTheme = std::make_unique<Lyra3CoversTheme>();
       currentMetrics = &Lyra3CoversMetrics::values;
+      break;
+    case CrossPointSettings::UI_THEME::LYRA_CAROUSEL:
+      LOG_DBG("UI", "Using Lyra Carousel theme");
+      currentTheme = std::make_unique<LyraCarouselTheme>();
+      currentMetrics = &LyraCarouselMetrics::values;
       break;
   }
   metricsValid = false;
@@ -103,9 +109,20 @@ Rect UITheme::getScreenSafeArea(const GfxRenderer& renderer, bool hasFrontButton
 }
 
 std::string UITheme::getCoverThumbPath(std::string coverBmpPath, int coverHeight) {
-  size_t pos = coverBmpPath.find("[HEIGHT]", 0);
-  if (pos != std::string::npos) {
-    coverBmpPath.replace(pos, 8, std::to_string(coverHeight));
+  if (coverHeight <= 0) return "";
+  const int coverWidth = (coverHeight * 2 + 1) / 3;
+  return getCoverThumbPath(coverBmpPath, coverWidth, coverHeight);
+}
+
+std::string UITheme::getCoverThumbPath(std::string coverBmpPath, int width, int height) {
+  if (height <= 0) return "";
+  size_t widthPos = coverBmpPath.find("[WIDTH]", 0);
+  if (widthPos != std::string::npos) {
+    coverBmpPath.replace(widthPos, 7, std::to_string(width));
+  }
+  size_t heightPos = coverBmpPath.find("[HEIGHT]", 0);
+  if (heightPos != std::string::npos) {
+    coverBmpPath.replace(heightPos, 8, std::to_string(height));
   }
   return coverBmpPath;
 }
