@@ -13,6 +13,23 @@
   - Extended reading speeds to fine-grained options: **1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, and 12 pages per minute**.
 - **Dynamic `OptionPopup` Scaling**:
   - Auto-scaling row heights and font sizes so large option menus (like extended turn rates) fit on-screen cleanly without clipping.
+- **Automated Release Build Script (`build-releases.sh`)**:
+  - Single-command build script compiling all device firmware binaries into the `release-version/` directory with distinct filenames (`firmware-x4-x3.bin`, `firmware-sticky.bin`, `firmware-x4pro.bin`, `firmware-papermono.bin`, `firmware-x4c.bin`).
+
+### Building Release Binaries
+
+To build all firmware release binaries:
+```bash
+./build-releases.sh
+```
+Or build for a specific device target:
+```bash
+./build-releases.sh gh_release   # Xteink X4 / X3
+./build-releases.sh sticky       # Seeed reTerminal Sticky
+./build-releases.sh x4pro        # Xteink X4Pro
+```
+
+All compiled binaries will be output to the `release-version/` folder.
 
 ---
 
