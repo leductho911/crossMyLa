@@ -280,12 +280,29 @@ bool Xtc::generateCoverBmp() const {
   return true;
 }
 
-std::string Xtc::getThumbBmpPath() const { return cachePath + "/thumb_[HEIGHT].bmp"; }
+std::string Xtc::getThumbBmpPath() const { return cachePath + "/thumb_[WIDTH]x[HEIGHT].bmp"; }
 std::string Xtc::getThumbBmpPath(int height) const { return cachePath + "/thumb_" + std::to_string(height) + ".bmp"; }
+std::string Xtc::getThumbBmpPath(int width, int height) const {
+  if (width <= 0) {
+    return getThumbBmpPath(height);
+  }
+  const std::string newPath = cachePath + "/thumb_" + std::to_string(width) + "x" + std::to_string(height) + ".bmp";
+  if (Storage.exists(newPath.c_str())) {
+    return newPath;
+  }
+  const std::string legacyPath = cachePath + "/thumb_" + std::to_string(height) + ".bmp";
+  if (Storage.exists(legacyPath.c_str())) {
+    return legacyPath;
+  }
+  return newPath;
+}
 
-bool Xtc::generateThumbBmp(int height) const {
+bool Xtc::generateThumbBmp(int height) const { return generateThumbBmp(0, height); }
+
+bool Xtc::generateThumbBmp(int width, int height) const {
+  const std::string thumbPath = getThumbBmpPath(width, height);
   // Already generated
-  if (Storage.exists(getThumbBmpPath(height).c_str())) {
+  if (Storage.exists(thumbPath.c_str())) {
     return true;
   }
 
@@ -313,7 +330,7 @@ bool Xtc::generateThumbBmp(int height) const {
   const uint8_t bitDepth = parser->getBitDepth();
 
   // Calculate target dimensions for thumbnail (fit within 240x400 Continue Reading card)
-  int THUMB_TARGET_WIDTH = height * 0.6;
+  int THUMB_TARGET_WIDTH = (width > 0) ? width : static_cast<int>(height * 0.6);
   int THUMB_TARGET_HEIGHT = height;
 
   // Calculate scale factor
@@ -328,7 +345,7 @@ bool Xtc::generateThumbBmp(int height) const {
     if (generateCoverBmp()) {
       HalFile src, dst;
       if (Storage.openFileForRead("XTC", getCoverBmpPath(), src)) {
-        if (Storage.openFileForWrite("XTC", getThumbBmpPath(height), dst)) {
+        if (Storage.openFileForWrite("XTC", thumbPath, dst)) {
           uint8_t buffer[512];
           while (src.available()) {
             size_t bytesRead = src.read(buffer, sizeof(buffer));
@@ -337,7 +354,7 @@ bool Xtc::generateThumbBmp(int height) const {
         }
       }
       LOG_DBG("XTC", "Copied cover to thumb (no scaling needed)");
-      return Storage.exists(getThumbBmpPath(height).c_str());
+      return Storage.exists(thumbPath.c_str());
     }
     return false;
   }
@@ -371,7 +388,7 @@ bool Xtc::generateThumbBmp(int height) const {
 
   // Create thumbnail BMP file - use 1-bit format for fast home screen rendering (no gray passes)
   HalFile thumbBmp;
-  if (!Storage.openFileForWrite("XTC", getThumbBmpPath(height), thumbBmp)) {
+  if (!Storage.openFileForWrite("XTC", thumbPath, thumbBmp)) {
     LOG_DBG("XTC", "Failed to create thumb BMP file");
     free(pageBuffer);
     return false;

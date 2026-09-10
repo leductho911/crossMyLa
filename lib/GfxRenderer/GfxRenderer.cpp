@@ -6,6 +6,7 @@
 #include <FontDecompressor.h>
 #include <HalGPIO.h>
 #include <Logging.h>
+#include <Memory.h>
 #include <SdCardFont.h>
 #include <Utf8.h>
 
@@ -1339,6 +1340,21 @@ void GfxRenderer::drawIcon(const uint8_t bitmap[], const int x, const int y, con
   }
 }
 
+void GfxRenderer::drawIconInverted(const uint8_t bitmap[], const int x, const int y, const int width,
+                                   const int height) const {
+  const int size = width;
+  const int rowBytes = (size + 7) / 8;
+  for (int row = 0; row < size; row++) {
+    for (int col = 0; col < size; col++) {
+      const uint8_t byte = bitmap[row * rowBytes + (col >> 3)];
+      const bool ink = ((byte >> (7 - (col & 7))) & 1) == 0;
+      if (ink) {
+        drawPixel(x + (size - 1 - row), y + col, false);
+      }
+    }
+  }
+}
+
 void GfxRenderer::drawBitmap(const Bitmap& bitmap, const int x, const int y, const int maxWidth, const int maxHeight,
                              const float cropX, const float cropY) const {
   if (fontCacheManager_ && fontCacheManager_->isScanning()) return;
@@ -1526,6 +1542,71 @@ void GfxRenderer::drawBitmap1Bit(const Bitmap& bitmap, const int x, const int y,
   const int renderedHeight =
       isScaled ? static_cast<int>(std::floor((bitmap.getHeight() - 1) * scale)) + 1 : bitmap.getHeight();
   preserveImagePolarity(x, y, renderedWidth, renderedHeight);
+}
+
+void GfxRenderer::drawPerspectiveBitmap(const Bitmap& bitmap, const int x, const int y, const int w, const int hL,
+                                        const int hR) const {
+  if (fontCacheManager_ && fontCacheManager_->isScanning()) return;
+  if (w <= 0 || hL <= 0 || hR <= 0) return;
+
+  const int srcW = bitmap.getWidth();
+  const int srcH = bitmap.getHeight();
+  if (srcW <= 0 || srcH <= 0) return;
+
+  const int hMax = std::max(hL, hR);
+  const int screenW = getScreenWidth();
+  const int screenH = getScreenHeight();
+  const bool topDown = bitmap.isTopDown();
+
+  const int outputRowSize = (srcW + 3) / 4;
+  auto outputRow = makeUniqueNoThrow<uint8_t[]>(outputRowSize);
+  auto rowBytes = makeUniqueNoThrow<uint8_t[]>(bitmap.getRowBytes());
+  if (!outputRow || !rowBytes) {
+    LOG_ERR("GFX", "Failed to allocate perspective bitmap row buffers");
+    return;
+  }
+
+  for (int srcY = 0; srcY < srcH; srcY++) {
+    if (bitmap.readNextRow(outputRow.get(), rowBytes.get()) != BmpReaderError::Ok) {
+      LOG_ERR("GFX", "Failed to read row %d from bitmap (perspective)", srcY);
+      return;
+    }
+    const int srcRowIndex = topDown ? srcY : (srcH - 1 - srcY);
+
+    for (int dx = 0; dx < w; dx++) {
+      const int colH = (w == 1) ? hL : (hL + (hR - hL) * dx / (w - 1));
+      if (colH <= 0) continue;
+      const int colTop = (hMax - colH) / 2;
+      const int screenX = x + dx;
+      if (screenX < 0 || screenX >= screenW) continue;
+
+      const int srcX = (dx * srcW) / w;
+      const uint8_t val = (outputRow[srcX / 4] >> (6 - ((srcX * 2) % 8))) & 0x3;
+
+      const int dstYStart = (srcRowIndex * colH) / srcH;
+      const int dstYEnd = ((srcRowIndex + 1) * colH) / srcH;
+      for (int dy = dstYStart; dy < dstYEnd; ++dy) {
+        const int screenY = y + colTop + dy;
+        if (screenY < 0 || screenY >= screenH) continue;
+
+        if (renderMode == BW && val < 3) {
+          drawPixel(screenX, screenY);
+        } else if (renderMode == GRAYSCALE_MSB && (val == 1 || val == 2)) {
+          drawPixel(screenX, screenY, false);
+        } else if (renderMode == GRAYSCALE_LSB && val == 1) {
+          drawPixel(screenX, screenY, false);
+        }
+      }
+    }
+  }
+
+  if (renderMode == BW && display.isInverted() && !_stripActive) {
+    for (int dx = 0; dx < w; ++dx) {
+      const int colH = (w == 1) ? hL : (hL + (hR - hL) * dx / (w - 1));
+      const int colTop = (hMax - colH) / 2;
+      preserveImagePolarity(x + dx, y + colTop, 1, colH);
+    }
+  }
 }
 
 void GfxRenderer::preserveImagePolarity(const int x, const int y, const int width, const int height) const {
