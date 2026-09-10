@@ -1,3 +1,22 @@
+## CrossMyLa Changes
+
+**CrossMyLa** is a customized fork featuring enhanced navigation, modern visuals, and reader ergonomics:
+
+- **Lyra Carousel Theme (`LyraCarouselTheme`) get from CrossInk**:
+  - **3D Perspective Rendering**: Perspective bitmap transformation (`drawPerspectiveBitmap`) displaying recent book covers in an interactive 3D carousel with angled flanking covers.
+  - **Clean Header & Status Layout**: Tailored metrics (`homeTopPadding = 48`, `batteryBarHeight = 36`, `homeCoverTileHeight = 620`) eliminating overlaps between book titles/covers and battery status indicators.
+- **2D Directional Navigation**:
+  - **Up / Down Hardware Buttons**: Switch focus between the **Recent Books Section** (top carousel) and the **Menu Items Section** (bottom row).
+  - **Left / Right Hardware Buttons**: Cycle horizontally within the active section (rotate book covers or scroll menu options).
+  - **Context-Aware Button Hints & Touch Swipes**: Bottom button hints dynamically update to reflect the active row, with full swipe gesture support for scrolling the carousel.
+- **Expanded Auto Page Turn (PPM)**:
+  - Extended reading speeds to fine-grained options: **1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, and 12 pages per minute**.
+- **Dynamic `OptionPopup` Scaling**:
+  - Auto-scaling row heights and font sizes so large option menus (like extended turn rates) fit on-screen cleanly without clipping.
+
+---
+
+
 # CrossPoint Reader
 
 [![Fund contributors](https://img.shields.io/badge/%F0%9F%91%91_Fund_contributors-royalty.dev-BB953A?style=for-the-badge&labelColor=1a1a1a)](https://app.royalty.dev/crosspoint-reader/crosspoint-reader)
