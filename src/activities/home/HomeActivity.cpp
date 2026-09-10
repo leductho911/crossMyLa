@@ -20,6 +20,7 @@
 #include "OpdsServerStore.h"
 #include "RecentBooksStore.h"
 #include "components/UITheme.h"
+#include "components/themes/lyra/LyraCarouselTheme.h"
 #include "fontIds.h"
 
 int HomeActivity::getMenuItemCount() const {
@@ -58,10 +59,16 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
   bool showingLoading = false;
   Rect popupRect;
 
+  const bool isCarousel =
+      static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
+
   int progress = 0;
   for (RecentBook& book : recentBooks) {
     if (!book.coverBmpPath.empty()) {
-      std::string coverPath = UITheme::getCoverThumbPath(book.coverBmpPath, coverHeight);
+      std::string coverPath = isCarousel
+                                  ? UITheme::getCoverThumbPath(book.coverBmpPath, LyraCarouselTheme::kCenterThumbW,
+                                                               LyraCarouselTheme::kCenterThumbH)
+                                  : UITheme::getCoverThumbPath(book.coverBmpPath, coverHeight);
       if (!Storage.exists(coverPath.c_str())) {
         // If epub, try to load the metadata for title/author and cover
         if (FsHelpers::hasEpubExtension(book.path)) {
@@ -75,7 +82,13 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
             popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
           }
           GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
-          bool success = epub.generateThumbBmp(coverHeight);
+          bool success = false;
+          if (isCarousel) {
+            success = epub.generateThumbBmp(LyraCarouselTheme::kCenterThumbW, LyraCarouselTheme::kCenterThumbH) &&
+                      epub.generateThumbBmp(LyraCarouselTheme::kSideCoverW, LyraCarouselTheme::kSideCoverH);
+          } else {
+            success = epub.generateThumbBmp(coverHeight);
+          }
           if (!success) {
             RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
             book.coverBmpPath = "";
@@ -92,7 +105,13 @@ void HomeActivity::loadRecentCovers(int coverHeight) {
               popupRect = GUI.drawPopup(renderer, tr(STR_LOADING_POPUP));
             }
             GUI.fillPopupProgress(renderer, popupRect, 10 + progress * (90 / recentBooks.size()));
-            bool success = xtc.generateThumbBmp(coverHeight);
+            bool success = false;
+            if (isCarousel) {
+              success = xtc.generateThumbBmp(LyraCarouselTheme::kCenterThumbW, LyraCarouselTheme::kCenterThumbH) &&
+                        xtc.generateThumbBmp(LyraCarouselTheme::kSideCoverW, LyraCarouselTheme::kSideCoverH);
+            } else {
+              success = xtc.generateThumbBmp(coverHeight);
+            }
             if (!success) {
               RECENT_BOOKS.updateBook(book.path, book.title, book.author, "");
               book.coverBmpPath = "";
@@ -303,6 +322,14 @@ void HomeActivity::render(RenderLock&&) {
   GUI.drawRecentBookCover(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
                           recentBooks, selectorIndex, coverRendered, coverBufferStored, bufferRestored,
                           std::bind(&HomeActivity::storeCoverBuffer, this));
+
+  if (bufferRestored) {
+    const int bookCount = static_cast<int>(recentBooks.size());
+    const bool inCarouselRow = (selectorIndex < bookCount);
+    const int centerIdx = inCarouselRow ? selectorIndex : 0;
+    GUI.drawCarouselBorder(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
+                           recentBooks, centerIdx, inCarouselRow);
+  }
 
   // Build menu items dynamically
   std::vector<const char*> menuItems = {tr(STR_BROWSE_FILES), tr(STR_LIBRARY), tr(STR_FILE_TRANSFER),
