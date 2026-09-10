@@ -139,6 +139,13 @@ void HomeActivity::onEnter() {
 
   const auto base = static_cast<int>(recentBooks.size());
   selectorIndex = initialMenuItem == HomeMenuItem::NONE ? 0 : base + menuItemToIndex(initialMenuItem, hasOpdsServers);
+  if (selectorIndex < base) {
+    carouselBookIndex = selectorIndex;
+    carouselMenuIndex = 0;
+  } else {
+    carouselBookIndex = 0;
+    carouselMenuIndex = selectorIndex - base;
+  }
 
   // Trigger first update
   requestUpdate();
@@ -218,26 +225,136 @@ void HomeActivity::loop() {
     }
   };
 
-  buttonNavigator.onNext([this, menuCount] {
-    selectorIndex = ButtonNavigator::nextIndex(selectorIndex, menuCount);
-    requestUpdate();
-  });
+  const bool isCarousel =
+      static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
 
-  buttonNavigator.onPrevious([this, menuCount] {
-    selectorIndex = ButtonNavigator::previousIndex(selectorIndex, menuCount);
-    requestUpdate();
-  });
+  if (isCarousel) {
+    const int bookCount = static_cast<int>(recentBooks.size());
+    const int totalMenuItems = menuCount - bookCount;
+
+    buttonNavigator.onPress({MappedInputManager::Button::Up, MappedInputManager::Button::Down},
+                            [this, bookCount, totalMenuItems] {
+                              if (bookCount <= 0) return;
+
+                              if (selectorIndex < bookCount) {
+                                carouselBookIndex = selectorIndex;
+                                if (carouselMenuIndex < 0 || carouselMenuIndex >= totalMenuItems) {
+                                  carouselMenuIndex = 0;
+                                }
+                                selectorIndex = bookCount + carouselMenuIndex;
+                              } else {
+                                carouselMenuIndex = selectorIndex - bookCount;
+                                if (carouselBookIndex < 0 || carouselBookIndex >= bookCount) {
+                                  carouselBookIndex = 0;
+                                }
+                                selectorIndex = carouselBookIndex;
+                              }
+                              requestUpdate();
+                            });
+
+    buttonNavigator.onPressAndContinuous({MappedInputManager::Button::Left},
+                                         [this, bookCount, totalMenuItems, menuCount] {
+                                           if (bookCount <= 0) {
+                                             selectorIndex = ButtonNavigator::previousIndex(selectorIndex, menuCount);
+                                           } else if (selectorIndex < bookCount) {
+                                             carouselBookIndex = (selectorIndex + bookCount - 1) % bookCount;
+                                             selectorIndex = carouselBookIndex;
+                                           } else {
+                                             int currentMenu = selectorIndex - bookCount;
+                                             carouselMenuIndex = (currentMenu + totalMenuItems - 1) % totalMenuItems;
+                                             selectorIndex = bookCount + carouselMenuIndex;
+                                           }
+                                           requestUpdate();
+                                         });
+
+    buttonNavigator.onPressAndContinuous({MappedInputManager::Button::Right},
+                                         [this, bookCount, totalMenuItems, menuCount] {
+                                           if (bookCount <= 0) {
+                                             selectorIndex = ButtonNavigator::nextIndex(selectorIndex, menuCount);
+                                           } else if (selectorIndex < bookCount) {
+                                             carouselBookIndex = (selectorIndex + 1) % bookCount;
+                                             selectorIndex = carouselBookIndex;
+                                           } else {
+                                             int currentMenu = selectorIndex - bookCount;
+                                             carouselMenuIndex = (currentMenu + 1) % totalMenuItems;
+                                             selectorIndex = bookCount + carouselMenuIndex;
+                                           }
+                                           requestUpdate();
+                                         });
+  } else {
+    buttonNavigator.onNext([this, menuCount] {
+      selectorIndex = ButtonNavigator::nextIndex(selectorIndex, menuCount);
+      requestUpdate();
+    });
+
+    buttonNavigator.onPrevious([this, menuCount] {
+      selectorIndex = ButtonNavigator::previousIndex(selectorIndex, menuCount);
+      requestUpdate();
+    });
+  }
 
   const auto swipe = mappedInput.wasSwipe();
-  if (swipe == MappedInputManager::SwipeDir::Up) {
-    selectorIndex = ButtonNavigator::nextIndex(selectorIndex, menuCount);
-    requestUpdate();
-    return;
-  }
-  if (swipe == MappedInputManager::SwipeDir::Down) {
-    selectorIndex = ButtonNavigator::previousIndex(selectorIndex, menuCount);
-    requestUpdate();
-    return;
+  if (isCarousel) {
+    const int bookCount = static_cast<int>(recentBooks.size());
+    const int totalMenuItems = menuCount - bookCount;
+    if (swipe == MappedInputManager::SwipeDir::Up || swipe == MappedInputManager::SwipeDir::Down) {
+      if (bookCount > 0) {
+        if (selectorIndex < bookCount) {
+          carouselBookIndex = selectorIndex;
+          if (carouselMenuIndex < 0 || carouselMenuIndex >= totalMenuItems) {
+            carouselMenuIndex = 0;
+          }
+          selectorIndex = bookCount + carouselMenuIndex;
+        } else {
+          carouselMenuIndex = selectorIndex - bookCount;
+          if (carouselBookIndex < 0 || carouselBookIndex >= bookCount) {
+            carouselBookIndex = 0;
+          }
+          selectorIndex = carouselBookIndex;
+        }
+        requestUpdate();
+      }
+      return;
+    }
+    if (swipe == MappedInputManager::SwipeDir::Left) {
+      if (bookCount <= 0) {
+        selectorIndex = ButtonNavigator::nextIndex(selectorIndex, menuCount);
+      } else if (selectorIndex < bookCount) {
+        carouselBookIndex = (selectorIndex + 1) % bookCount;
+        selectorIndex = carouselBookIndex;
+      } else {
+        int currentMenu = selectorIndex - bookCount;
+        carouselMenuIndex = (currentMenu + 1) % totalMenuItems;
+        selectorIndex = bookCount + carouselMenuIndex;
+      }
+      requestUpdate();
+      return;
+    }
+    if (swipe == MappedInputManager::SwipeDir::Right) {
+      if (bookCount <= 0) {
+        selectorIndex = ButtonNavigator::previousIndex(selectorIndex, menuCount);
+      } else if (selectorIndex < bookCount) {
+        carouselBookIndex = (selectorIndex + bookCount - 1) % bookCount;
+        selectorIndex = carouselBookIndex;
+      } else {
+        int currentMenu = selectorIndex - bookCount;
+        carouselMenuIndex = (currentMenu + totalMenuItems - 1) % totalMenuItems;
+        selectorIndex = bookCount + carouselMenuIndex;
+      }
+      requestUpdate();
+      return;
+    }
+  } else {
+    if (swipe == MappedInputManager::SwipeDir::Up) {
+      selectorIndex = ButtonNavigator::nextIndex(selectorIndex, menuCount);
+      requestUpdate();
+      return;
+    }
+    if (swipe == MappedInputManager::SwipeDir::Down) {
+      selectorIndex = ButtonNavigator::previousIndex(selectorIndex, menuCount);
+      requestUpdate();
+      return;
+    }
   }
 
   // Back is otherwise unused on the home menu: open the most recently read
@@ -259,10 +376,12 @@ void HomeActivity::loop() {
     if (coverTouch == MappedInputManager::RowTouch::Down) {
       if (selectorIndex != touchedBook) {
         selectorIndex = touchedBook;
+        carouselBookIndex = touchedBook;
         requestUpdate();
       }
     } else {
       selectorIndex = touchedBook;
+      carouselBookIndex = touchedBook;
       activateSelection();
     }
     return;
@@ -283,10 +402,12 @@ void HomeActivity::loop() {
     if (menuTouch == MappedInputManager::RowTouch::Down) {
       if (selectorIndex != touchedIndex) {
         selectorIndex = touchedIndex;
+        carouselMenuIndex = menuRow;
         requestUpdate();
       }
     } else {
       selectorIndex = touchedIndex;
+      carouselMenuIndex = menuRow;
       activateSelection();
     }
     return;
@@ -323,10 +444,13 @@ void HomeActivity::render(RenderLock&&) {
                           recentBooks, selectorIndex, coverRendered, coverBufferStored, bufferRestored,
                           std::bind(&HomeActivity::storeCoverBuffer, this));
 
+  const bool isCarousel =
+      static_cast<CrossPointSettings::UI_THEME>(SETTINGS.uiTheme) == CrossPointSettings::UI_THEME::LYRA_CAROUSEL;
+
   if (bufferRestored) {
     const int bookCount = static_cast<int>(recentBooks.size());
     const bool inCarouselRow = (selectorIndex < bookCount);
-    const int centerIdx = inCarouselRow ? selectorIndex : 0;
+    const int centerIdx = inCarouselRow ? selectorIndex : carouselBookIndex;
     GUI.drawCarouselBorder(renderer, Rect{0, metrics.homeTopPadding, pageWidth, metrics.homeCoverTileHeight},
                            recentBooks, centerIdx, inCarouselRow);
   }
@@ -357,8 +481,9 @@ void HomeActivity::render(RenderLock&&) {
       [&menuItems](int index) { return std::string(menuItems[index]); },
       [&menuIcons](int index) { return menuIcons[index]; });
 
-  const auto labels = mappedInput.mapLabels(recentBooks.empty() ? "" : tr(STR_RESUME), tr(STR_SELECT), tr(STR_DIR_UP),
-                                            tr(STR_DIR_DOWN));
+  const auto labels = mappedInput.mapLabels(recentBooks.empty() ? "" : tr(STR_RESUME), tr(STR_SELECT),
+                                            isCarousel ? tr(STR_DIR_LEFT) : tr(STR_DIR_UP),
+                                            isCarousel ? tr(STR_DIR_RIGHT) : tr(STR_DIR_DOWN));
   GUI.drawButtonHints(renderer, labels.btn1, labels.btn2, labels.btn3, labels.btn4);
 
   renderer.displayBuffer(cleanInitialRefresh && !firstRenderDone ? HalDisplay::HALF_REFRESH : HalDisplay::FAST_REFRESH);

@@ -1,2 +1,13 @@
 CompileFlags:
-    Add: [-std=c++2a]
+  CompilationDatabase: .
+  Add: 
+    - -std=c++2a
+    - -Isrc
+    - -Wno-unknown-argument
+  Remove:
+    - /-march=.*/
+    - /-mabi=.*/
+    - -march=rv32imc_zicsr_zifencei
+    - -fstrict-volatile-bitfields
+    - -fno-tree-switch-conversion
+    - -freorder-blocks
