@@ -227,9 +227,23 @@ class OptionPopup {
     props.buttonHeight =
         fui::clampI16(target.lineHeight(fui::GfxRendererTarget::FONT_BODY) + metrics.optionPopupSelectionVPadding * 2);
 
+    const fui::Rect screen = device.screen();
+    if (count > 0 && props.verticalOptions) {
+      const int16_t headerH =
+          static_cast<int16_t>(innerPadding * 2 + target.lineHeight(fui::GfxRendererTarget::FONT_BODY) + props.gap);
+      const int16_t maxAvailableButtonsH = static_cast<int16_t>(screen.height - headerH - 16);
+      const int16_t neededButtonsH = static_cast<int16_t>(count * props.buttonHeight + (count - 1) * props.gap);
+      if (neededButtonsH > maxAvailableButtonsH) {
+        const int16_t lineH = target.lineHeight(fui::GfxRendererTarget::FONT_BODY);
+        props.gap =
+            static_cast<int16_t>(std::max<int>(1, (maxAvailableButtonsH - count * lineH) / std::max(1, count - 1)));
+        props.buttonHeight = static_cast<int16_t>(
+            std::max<int16_t>(lineH, static_cast<int16_t>((maxAvailableButtonsH - (count - 1) * props.gap) / count)));
+      }
+    }
+
     // Fixed fraction of the screen, clamped by the theme's side margins; the
     // old max-text-width sizing is gone, long labels wrap inside the buttons.
-    const fui::Rect screen = device.screen();
     const int16_t width =
         fui::clampI16(std::min<int>(screen.width * 3 / 4, screen.width - metrics.optionPopupDialogSideMargin * 2));
     const int16_t height = fui::clampI16(fui::optionDialogHeight(target, props, width), 0, screen.height);
