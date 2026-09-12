@@ -7,6 +7,7 @@
 
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
+#include "components/UIThemeTokens.h"
 #include "fontIds.h"
 
 namespace fui = freeink::ui;
@@ -130,7 +131,8 @@ void UiListActivity::syncListViewport(UiScreen& screen, fui::ListProps& props, c
     // A label that must wrap (labelText.maxLines > 1) grows only its own row:
     // list() sizes wrapped items per-row, so the dense height stays.
     const auto& metrics = UITheme::getInstance().getMetrics();
-    rowHeight = static_cast<int16_t>(hasSubtitle ? metrics.listWithSubtitleRowHeight : metrics.listRowHeight);
+    rowHeight = static_cast<int16_t>(
+        UiThemeTokensDetail::scaledListMetric(hasSubtitle ? metrics.listWithSubtitleRowHeight : metrics.listRowHeight));
     props.rowHeight = rowHeight;
   }
   activeNav().syncToProps(screen.body(), rowHeight, screen.theme().listRowGap, listCount(), props);

@@ -2,7 +2,24 @@
 #include <BoardConfig.h>
 #include <FreeInkUIGfxRenderer.h>
 
+#include "CrossPointSettings.h"
 #include "UITheme.h"
+
+namespace UiThemeTokensDetail {
+inline int16_t scaledListMetric(const int metric) {
+  constexpr int baseFontSize = 10;
+  int scaleFontSize = baseFontSize;
+  switch (SETTINGS.uiScale) {
+    case CrossPointSettings::UI_SCALE_LARGE:
+      scaleFontSize = 12;
+      break;
+    case CrossPointSettings::UI_SCALE_SMALL:
+    default:
+      break;
+  }
+  return static_cast<int16_t>((metric * scaleFontSize + baseFontSize / 2) / baseFontSize);
+}
+}  // namespace UiThemeTokensDetail
 
 // Merges the active UITheme's shape (row gaps, radii, insets, selection
 // style) with the uiScale-derived sizes into FreeInkUI theme tokens: the

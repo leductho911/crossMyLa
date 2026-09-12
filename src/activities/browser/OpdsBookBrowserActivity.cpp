@@ -17,6 +17,7 @@
 #include "activities/util/KeyboardEntryActivity.h"
 #include "components/UIScale.h"
 #include "components/UITheme.h"
+#include "components/UIThemeTokens.h"
 #include "components/icons/search32.h"
 #include "fontIds.h"
 #include "network/HttpDownloader.h"
@@ -257,7 +258,8 @@ void OpdsBookBrowserActivity::buildBrowsingScreen(UiScreen& screen) {
     // instead of FreeInkUI's touch-target-sized default (see
     // UiListActivity::syncListViewport; this screen predates that base and
     // syncs its own viewport directly). Book rows carry an author subtitle.
-    rowHeight = static_cast<int16_t>(UITheme::getInstance().getMetrics().listWithSubtitleRowHeight);
+    rowHeight = static_cast<int16_t>(
+        UiThemeTokensDetail::scaledListMetric(UITheme::getInstance().getMetrics().listWithSubtitleRowHeight));
     props.rowHeight = rowHeight;
   }
   listNav.syncToProps(screen.body(), rowHeight, screen.theme().listRowGap, static_cast<int>(entries.size()), props);

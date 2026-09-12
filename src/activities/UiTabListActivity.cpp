@@ -6,6 +6,7 @@
 
 #include "MappedInputManager.h"
 #include "components/UITheme.h"
+#include "components/UIThemeTokens.h"
 
 namespace fui = freeink::ui;
 
@@ -83,7 +84,8 @@ void UiTabListActivity::syncTabListViewport(UiScreen& screen, fui::ListProps& pr
     // height instead of FreeInkUI's touch-target-sized default (see
     // UiListActivity::syncListViewport, the non-tab counterpart of this).
     const auto& metrics = UITheme::getInstance().getMetrics();
-    rowHeight = static_cast<int16_t>(hasSubtitle ? metrics.listWithSubtitleRowHeight : metrics.listRowHeight);
+    rowHeight = static_cast<int16_t>(
+        UiThemeTokensDetail::scaledListMetric(hasSubtitle ? metrics.listWithSubtitleRowHeight : metrics.listRowHeight));
     // Wrapped (maxLines > 1) labels grow only their own row: list() sizes
     // wrapped items per-row, so the dense height stays for the rest.
     props.rowHeight = rowHeight;

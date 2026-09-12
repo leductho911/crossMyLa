@@ -202,12 +202,16 @@ void SettingsActivity::onExit() {
 }
 
 void SettingsActivity::applyUiSettingChange(uint8_t CrossPointSettings::* valuePtr) {
-  // Theme changes take effect immediately, on this screen — reload the theme
+  // Theme and UI-scale changes take effect immediately, on this screen — reload the theme
   // and re-derive the app's tokens so the very next repaint is in the new look.
-  if (valuePtr != &CrossPointSettings::uiTheme) {
+  const bool themeChanged = valuePtr == &CrossPointSettings::uiTheme;
+  const bool scaleChanged = valuePtr == &CrossPointSettings::uiScale;
+  if (!themeChanged && !scaleChanged) {
     return;
   }
-  UITheme::getInstance().reload();
+  if (themeChanged) {
+    UITheme::getInstance().reload();
+  }
   // Re-derive the shared tokens for the new look; the gate stays closed until
   // the repaint that rebuilds the interaction table in the new layout.
   resetUi();

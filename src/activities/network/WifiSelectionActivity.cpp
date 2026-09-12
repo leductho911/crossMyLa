@@ -14,6 +14,7 @@
 #include "WifiCredentialStore.h"
 #include "activities/util/KeyboardEntryActivity.h"
 #include "components/UITheme.h"
+#include "components/UIThemeTokens.h"
 #include "fontIds.h"
 
 namespace fui = freeink::ui;
@@ -951,7 +952,7 @@ void WifiSelectionActivity::buildListScreen(UiScreen& screen) {
     // UiListActivity::syncListViewport; this screen predates that base and
     // syncs its own viewport directly). A long SSID that wraps grows only
     // its own row: list() sizes wrapped items per-row.
-    rowHeight = static_cast<int16_t>(metrics.listRowHeight);
+    rowHeight = static_cast<int16_t>(UiThemeTokensDetail::scaledListMetric(metrics.listRowHeight));
     props.rowHeight = rowHeight;
   }
   listNav.syncToProps(screen.body(), rowHeight, screen.theme().listRowGap, static_cast<int>(networks.size()), props);
