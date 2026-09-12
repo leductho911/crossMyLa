@@ -550,7 +550,8 @@ void KOReaderSyncActivity::buildResultScreen(UiScreen& screen) {
     // or the band and the rows it contains fall out of sync.
     int16_t actionRowHeight = screen.theme().rowHeight;
     if (!mappedInput.hasTouch()) {
-      actionRowHeight = static_cast<int16_t>(UITheme::getInstance().getMetrics().listRowHeight);
+      actionRowHeight = static_cast<int16_t>(
+          UiThemeTokensDetail::scaledListMetric(UITheme::getInstance().getMetrics().listRowHeight));
       actionProps.rowHeight = actionRowHeight;
     }
     // Keep the theme's row inset + side padding so the selected-row highlight has

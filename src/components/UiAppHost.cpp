@@ -9,6 +9,10 @@ UiAppHost::UiAppHost(const GfxRenderer& renderer)
 
 void UiAppHost::resetUi() {
   uiReady = false;
+  const auto spec = uiScaleSpec();
+  uiTarget.setFont(freeink::ui::GfxRendererTarget::FONT_SMALL, spec.smallFontId);
+  uiTarget.setFont(freeink::ui::GfxRendererTarget::FONT_BODY, spec.bodyFontId);
+  uiTarget.setFont(freeink::ui::GfxRendererTarget::FONT_TITLE, spec.titleFontId);
   applySharedUiTheme(app, uiTarget);
 }
 
