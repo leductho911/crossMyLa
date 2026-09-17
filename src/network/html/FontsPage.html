@@ -3,7 +3,7 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>CrossPoint Reader - Fonts</title>
+    <title>CrossPoint Reader - CrossMyLa - Fonts</title>
     <style>
       :root {
         --font-color: #333;
@@ -103,14 +103,87 @@
         align-items: center;
         flex-wrap: wrap;
       }
-      .upload-form input[type="text"] {
-        padding: 6px 10px;
-        border: 1px solid var(--border-color);
-        border-radius: 4px;
+      .drop-zone {
+        border: 2px dashed var(--border-color);
+        border-radius: 8px;
+        padding: 24px 16px;
+        text-align: center;
         background: var(--bg);
+        transition: border-color 0.2s, background-color 0.2s;
+        cursor: pointer;
+      }
+      .drop-zone.dragover {
+        border-color: var(--accent-color);
+        background-color: rgba(110, 154, 130, 0.1);
+      }
+      .drop-zone-icon {
+        font-size: 2rem;
+        line-height: 1;
+        margin-bottom: 8px;
+      }
+      .drop-zone-text {
+        font-size: 0.95rem;
+        margin-bottom: 12px;
         color: var(--font-color);
       }
-      .upload-form input[type="file"] { flex: 1; min-width: 200px; }
+      .drop-zone-text code {
+        background: var(--card-bg);
+        padding: 2px 6px;
+        border-radius: 4px;
+        border: 1px solid var(--border-color);
+      }
+      .drop-zone-actions {
+        display: flex;
+        justify-content: center;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+      .btn-secondary {
+        background: var(--card-bg);
+        color: var(--font-color);
+        border: 1px solid var(--border-color);
+      }
+      .btn-secondary:hover {
+        background: var(--border-color);
+      }
+      .upload-summary {
+        margin-top: 14px;
+        padding: 12px;
+        border-radius: 6px;
+        background: var(--bg);
+        display: none;
+        border: 1px solid var(--border-color);
+      }
+      .upload-summary-list {
+        margin: 8px 0 0 18px;
+        padding: 0;
+        font-size: 0.9em;
+        color: var(--label-color);
+      }
+      .upload-summary-list li {
+        margin-bottom: 4px;
+      }
+      .upload-actions {
+        margin-top: 12px;
+        display: flex;
+        gap: 10px;
+        align-items: center;
+      }
+      .progress-container {
+        width: 100%;
+        background: var(--border-color);
+        border-radius: 4px;
+        height: 8px;
+        margin-top: 12px;
+        overflow: hidden;
+        display: none;
+      }
+      .progress-bar {
+        width: 0%;
+        height: 100%;
+        background: var(--accent-color);
+        transition: width 0.15s ease;
+      }
       #status {
         margin-top: 10px;
         padding: 8px;
@@ -123,7 +196,7 @@
     </style>
   </head>
   <body>
-    <h1>📚 CrossPoint Reader</h1>
+    <h1>📚 CrossPoint Reader - CrossMyLa</h1>
 
     <div class="nav-links">
       <a href="/">Home</a>
@@ -138,12 +211,32 @@
     </div>
 
     <div class="card">
-      <h2>Upload Font</h2>
-      <form class="upload-form" id="uploadForm">
-        <input type="file" id="fontFiles" webkitdirectory directory multiple required />
-        <button type="submit" class="btn btn-primary">Upload</button>
-      </form>
-      <p id="pickedInfo" class="family-meta" style="margin: 8px 0 0;"></p>
+      <h2>Upload Fonts</h2>
+      <div id="dropZone" class="drop-zone">
+        <div class="drop-zone-icon">📁</div>
+        <div class="drop-zone-text">
+          Drag &amp; drop font folders or <code>.cpfont</code> files here, or choose:
+        </div>
+        <div class="drop-zone-actions">
+          <input type="file" id="folderInput" webkitdirectory directory multiple style="display:none;" />
+          <input type="file" id="fileInput" accept=".cpfont" multiple style="display:none;" />
+          <button type="button" class="btn btn-secondary" id="pickFolderBtn">Select Folder</button>
+          <button type="button" class="btn btn-secondary" id="pickFilesBtn">Select Files</button>
+        </div>
+      </div>
+
+      <div id="uploadSummary" class="upload-summary">
+        <div id="summaryText" style="font-weight: 500;"></div>
+        <ul id="summaryList" class="upload-summary-list"></ul>
+        <div class="upload-actions">
+          <button type="button" class="btn btn-primary" id="uploadBtn">Upload</button>
+          <button type="button" class="btn btn-secondary" id="clearBtn">Clear</button>
+        </div>
+      </div>
+
+      <div id="progressContainer" class="progress-container">
+        <div id="progressBar" class="progress-bar"></div>
+      </div>
       <div id="status"></div>
     </div>
 
@@ -242,78 +335,234 @@
 
     // Sanitize to match firmware's [A-Za-z0-9_-]+ pattern.
     function sanitizeFamily(raw) {
-      return raw.replace(/[^A-Za-z0-9_-]/g, '_');
+      return (raw || '').replace(/[^A-Za-z0-9_-]/g, '_');
     }
 
-    function cpfontFilesOnly(fileList) {
-      return Array.from(fileList).filter(f => /\.cpfont$/i.test(f.name));
+    function getFamilyForFile(file) {
+      const relPath = file.webkitRelativePath || file.dragPath || '';
+      if (relPath) {
+        const parts = relPath.replace(/^[/\\]+/, '').split(/[/\\]+/).filter(Boolean);
+        if (parts.length >= 2) {
+          const parentDir = parts[parts.length - 2];
+          const fromFile = familyFromFilename(file.name);
+          if (fromFile && isNaN(Number(fromFile))) {
+            return sanitizeFamily(fromFile);
+          }
+          return sanitizeFamily(parentDir);
+        }
+      }
+      return sanitizeFamily(familyFromFilename(file.name));
     }
 
-    document.getElementById('fontFiles').addEventListener('change', function() {
-      const info = document.getElementById('pickedInfo');
-      const files = cpfontFilesOnly(this.files);
-      if (files.length === 0) {
-        info.textContent = 'No .cpfont files found in the selected folder.';
+    // Collection of files queued for upload: map of family -> array of File
+    const queuedFamilies = new Map();
+
+    function addFiles(fileList) {
+      for (const file of fileList) {
+        if (!/\.cpfont$/i.test(file.name)) continue;
+        const family = getFamilyForFile(file);
+        if (!family) continue;
+        if (!queuedFamilies.has(family)) {
+          queuedFamilies.set(family, []);
+        }
+        const existing = queuedFamilies.get(family);
+        // Avoid duplicate files with identical names in the same family
+        if (!existing.some(f => f.name === file.name)) {
+          existing.push(file);
+        }
+      }
+      updateSummary();
+    }
+
+    function updateSummary() {
+      const summary = document.getElementById('uploadSummary');
+      const text = document.getElementById('summaryText');
+      const list = document.getElementById('summaryList');
+      list.replaceChildren();
+
+      let totalFiles = 0;
+      let totalBytes = 0;
+      for (const [fam, files] of queuedFamilies.entries()) {
+        totalFiles += files.length;
+        const famBytes = files.reduce((acc, f) => acc + f.size, 0);
+        totalBytes += famBytes;
+        const li = document.createElement('li');
+        li.textContent = fam + ' (' + files.length + ' file' + (files.length === 1 ? '' : 's') + ', ' + formatSize(famBytes) + ')';
+        list.appendChild(li);
+      }
+
+      if (totalFiles === 0) {
+        summary.style.display = 'none';
         return;
       }
-      const family = sanitizeFamily(familyFromFilename(files[0].name));
-      info.textContent = files.length + ' file' + (files.length === 1 ? '' : 's') +
-        ' → family "' + family + '"';
+
+      text.textContent = 'Selected ' + totalFiles + ' file' + (totalFiles === 1 ? '' : 's') +
+        ' across ' + queuedFamilies.size + ' famil' + (queuedFamilies.size === 1 ? 'y' : 'ies') +
+        ' (' + formatSize(totalBytes) + ')';
+      summary.style.display = 'block';
+    }
+
+    function clearQueue() {
+      queuedFamilies.clear();
+      document.getElementById('folderInput').value = '';
+      document.getElementById('fileInput').value = '';
+      updateSummary();
+      const status = document.getElementById('status');
+      status.style.display = 'none';
+      document.getElementById('progressContainer').style.display = 'none';
+    }
+
+    // Scanning dropped files/folders via webkitGetAsEntry
+    async function scanEntry(entry) {
+      if (entry.isFile) {
+        return new Promise(resolve => {
+          entry.file(f => {
+            if (entry.fullPath) {
+              f.dragPath = entry.fullPath;
+            }
+            resolve(f.name.toLowerCase().endsWith('.cpfont') ? [f] : []);
+          }, () => resolve([]));
+        });
+      } else if (entry.isDirectory) {
+        const reader = entry.createReader();
+        const readBatch = () => new Promise(resolve => reader.readEntries(resolve, () => resolve([])));
+        let results = [];
+        while (true) {
+          const batch = await readBatch();
+          if (!batch || batch.length === 0) break;
+          for (const child of batch) {
+            results = results.concat(await scanEntry(child));
+          }
+        }
+        return results;
+      }
+      return [];
+    }
+
+    // Event Listeners for Pickers
+    const folderInput = document.getElementById('folderInput');
+    const fileInput = document.getElementById('fileInput');
+    const pickFolderBtn = document.getElementById('pickFolderBtn');
+    const pickFilesBtn = document.getElementById('pickFilesBtn');
+    const dropZone = document.getElementById('dropZone');
+    const clearBtn = document.getElementById('clearBtn');
+    const uploadBtn = document.getElementById('uploadBtn');
+
+    pickFolderBtn.addEventListener('click', e => { e.stopPropagation(); folderInput.click(); });
+    pickFilesBtn.addEventListener('click', e => { e.stopPropagation(); fileInput.click(); });
+    clearBtn.addEventListener('click', clearQueue);
+
+    folderInput.addEventListener('change', function() {
+      addFiles(this.files);
     });
 
-    document.getElementById('uploadForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
-      const status = document.getElementById('status');
-      const files = cpfontFilesOnly(document.getElementById('fontFiles').files);
-      if (files.length === 0) {
-        status.className = 'status-err';
-        status.style.display = 'block';
-        status.textContent = 'No .cpfont files selected.';
-        return;
+    fileInput.addEventListener('change', function() {
+      addFiles(this.files);
+    });
+
+    // Drag and Drop
+    ['dragenter', 'dragover'].forEach(name => {
+      dropZone.addEventListener(name, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.add('dragover');
+      });
+    });
+
+    ['dragleave', 'drop'].forEach(name => {
+      dropZone.addEventListener(name, e => {
+        e.preventDefault();
+        e.stopPropagation();
+        dropZone.classList.remove('dragover');
+      });
+    });
+
+    dropZone.addEventListener('drop', async e => {
+      const items = e.dataTransfer.items;
+      if (items && items.length > 0 && items[0].webkitGetAsEntry) {
+        const promises = [];
+        for (let i = 0; i < items.length; i++) {
+          const entry = items[i].webkitGetAsEntry();
+          if (entry) promises.push(scanEntry(entry));
+        }
+        const nestedFiles = await Promise.all(promises);
+        addFiles(nestedFiles.flat());
+      } else if (e.dataTransfer.files && e.dataTransfer.files.length > 0) {
+        addFiles(e.dataTransfer.files);
+      }
+    });
+
+    // Upload process
+    uploadBtn.addEventListener('click', async function() {
+      const totalFamilies = queuedFamilies.size;
+      let totalFiles = 0;
+      for (const files of queuedFamilies.values()) {
+        totalFiles += files.length;
       }
 
-      // A directory picker may include files from multiple family subfolders.
-      // Reject that up front — otherwise files[0]'s family is silently reused
-      // for every upload, corrupting the install layout.
-      const families = [...new Set(files.map(f => sanitizeFamily(familyFromFilename(f.name))))];
-      if (families.length !== 1) {
-        status.className = 'status-err';
-        status.style.display = 'block';
-        status.textContent = 'Please select files from a single font family.';
-        return;
-      }
-      const family = families[0];
+      if (totalFiles === 0) return;
+
+      const status = document.getElementById('status');
+      const progressContainer = document.getElementById('progressContainer');
+      const progressBar = document.getElementById('progressBar');
 
       status.className = '';
       status.style.display = 'block';
+      progressContainer.style.display = 'block';
+      progressBar.style.width = '0%';
+      uploadBtn.disabled = true;
+      clearBtn.disabled = true;
+      pickFolderBtn.disabled = true;
+      pickFilesBtn.disabled = true;
 
       let uploaded = 0;
-      for (const file of files) {
-        status.textContent = 'Uploading ' + (uploaded + 1) + '/' + files.length + ': ' + file.name;
-        const formData = new FormData();
-        formData.append('family', family);
-        formData.append('file', file, file.name);
-        try {
-          const res = await fetch('/api/fonts/upload', { method: 'POST', body: formData });
-          const data = await res.json();
-          if (!data.ok) {
+      for (const [family, files] of queuedFamilies.entries()) {
+        for (const file of files) {
+          status.textContent = 'Uploading (' + (uploaded + 1) + '/' + totalFiles + '): ' + family + ' / ' + file.name;
+          const pct = Math.round((uploaded / totalFiles) * 100);
+          progressBar.style.width = pct + '%';
+
+          const formData = new FormData();
+          formData.append('family', family);
+          formData.append('file', file, file.name);
+
+          try {
+            const res = await fetch('/api/fonts/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+            if (!data.ok) {
+              status.className = 'status-err';
+              status.textContent = 'Failed on ' + family + '/' + file.name + ': ' + (data.error || 'unknown error');
+              uploadBtn.disabled = false;
+              clearBtn.disabled = false;
+              pickFolderBtn.disabled = false;
+              pickFilesBtn.disabled = false;
+              await loadFonts();
+              return;
+            }
+          } catch (err) {
             status.className = 'status-err';
-            status.textContent = 'Failed on ' + file.name + ': ' + (data.error || 'unknown error');
+            status.textContent = 'Upload error on ' + family + '/' + file.name + ': ' + err.message;
+            uploadBtn.disabled = false;
+            clearBtn.disabled = false;
+            pickFolderBtn.disabled = false;
+            pickFilesBtn.disabled = false;
             await loadFonts();
             return;
           }
-        } catch (err) {
-          status.className = 'status-err';
-          status.textContent = 'Upload error on ' + file.name + ': ' + err.message;
-          await loadFonts();
-          return;
+          uploaded++;
         }
-        uploaded++;
       }
 
+      progressBar.style.width = '100%';
       status.className = 'status-ok';
-      status.textContent = 'Uploaded ' + uploaded + ' file' + (uploaded === 1 ? '' : 's') +
-        ' to family "' + family + '".';
+      status.textContent = 'Successfully uploaded ' + uploaded + ' file' + (uploaded === 1 ? '' : 's') +
+        ' across ' + totalFamilies + ' famil' + (totalFamilies === 1 ? 'y' : 'ies') + '.';
+
+      clearQueue();
+      uploadBtn.disabled = false;
+      clearBtn.disabled = false;
+      pickFolderBtn.disabled = false;
+      pickFilesBtn.disabled = false;
       await loadFonts();
     });
 

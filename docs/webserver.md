@@ -114,9 +114,11 @@ not returned by the API.
 ### Fonts
 
 The Fonts page lists installed SD-card font families and lets you upload
-`.cpfont` files. Upload files from one font family at a time. The server validates
-the font family name, filename, and `.cpfont` magic bytes before accepting the
-upload.
+`.cpfont` files. You can select single or multiple font folders, select individual
+`.cpfont` files, or drag and drop multiple folders/files into the browser. Files
+are automatically grouped by family and uploaded sequentially. The server
+validates the font family name, filename, and `.cpfont` magic bytes before
+accepting the upload.
 
 Installed fonts appear in **Settings > Reader > Font Family** after the font
 registry refreshes.

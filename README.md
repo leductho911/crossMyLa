@@ -15,6 +15,9 @@
   - Auto-scaling row heights and font sizes so large option menus (like extended turn rates) fit on-screen cleanly without clipping.
 - **Automated Release Build Script (`build-releases.sh`)**:
   - Single-command build script compiling all device firmware binaries into the `release-version/` directory with distinct filenames (`firmware-x4-x3.bin`, `firmware-sticky.bin`, `firmware-x4pro.bin`, `firmware-papermono.bin`, `firmware-x4c.bin`).
+- **Enhanced Web Interface & Multi-Font Uploader**:
+  - **Multi-Folder & Multi-Family Font Uploads**: Upload multiple font families and folders at once directly from `http://crosspoint.local/fonts`. Supports selecting parent folders containing multiple font families, multi-file picking, and drag-and-drop.
+  - **Automatic Font Family Grouping & Progress**: Groups `.cpfont` files automatically by family name with live progress tracking.
 
 ### Building Release Binaries
 
@@ -174,7 +177,7 @@ Convert your own TTF/OTF files into `.cpfont` files that load from the SD card. 
 1. Go to https://crosspointreader.com/fonts and open the "SD-card font builder" form.
 2. Upload up to four styles (regular, bold, italic, bold-italic), set the family name, point sizes, and Unicode range.
 3. Download the generated `.cpfont` files.
-4. Copy them to your SD card under `/fonts/YourFont/` (or `/.fonts/YourFont/` to hide the folder).
+4. Copy them to your SD card under `/fonts/YourFont/` (or `/.fonts/YourFont/` to hide the folder), or upload them via the web interface at `http://crosspoint.local/fonts` (supports folder selection, multi-file picking, and drag-and-drop).
 5. Select the font on the device from the font settings.
 
 Conversion runs the firmware repo's `lib/EpdFont/scripts/fontconvert_sdcard.py` script unmodified, so output matches a local host build.
