@@ -76,6 +76,28 @@ bool HalClock::formatTime(char* buf, size_t bufSize, bool use12Hour) const {
   return true;
 }
 
+bool HalClock::formatDateTime(char* buf, size_t bufSize, bool use12Hour) const {
+  if (bufSize < (use12Hour ? 24u : 20u)) return false;
+  struct tm local;
+  if (!localTime(local)) return false;
+
+  const int year = local.tm_year + 1900;
+  const int month = local.tm_mon + 1;
+  const int day = local.tm_mday;
+  const int hour24 = local.tm_hour;
+  const int min = local.tm_min;
+
+  if (use12Hour) {
+    const bool pm = hour24 >= 12;
+    int hour12 = hour24 % 12;
+    if (hour12 == 0) hour12 = 12;
+    snprintf(buf, bufSize, "%02d-%02d-%04d %d:%02d %s", day, month, year, hour12, min, pm ? "PM" : "AM");
+  } else {
+    snprintf(buf, bufSize, "%02d-%02d-%04d %02d:%02d", day, month, year, hour24, min);
+  }
+  return true;
+}
+
 bool HalClock::syncFromNTP() {
   if (!_available) return false;
 

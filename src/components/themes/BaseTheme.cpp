@@ -273,7 +273,8 @@ void BaseTheme::drawSideButtonHints(const GfxRenderer& renderer, const char* top
   }
 }
 
-void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* title, const char* subtitle) const {
+void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* title, const char* subtitle,
+                           const char* leftLabel) const {
   // Every activity header renders through the FreeInkUI header + battery
   // indicator components, styled by the active theme's tokens (padding,
   // centering, underline). Non-interactive frame: no hit rects registered.
@@ -310,15 +311,16 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
         ui.target.measureText(fui::GfxRendererTarget::FONT_SMALL, percentText, tokens.smallText).width);
   }
 
-  // Header clock, opposite the battery, on every screen that draws this
-  // header band (SETTINGS.clockShowInHeader).
+  // Header clock or left label (e.g. date & time on HomeActivity), opposite the battery.
   char clockText[10] = {0};
-  int16_t clockWidth = 0;
-  if (SETTINGS.clockShowInHeader && halClock.isAvailable() &&
-      halClock.formatTime(clockText, sizeof(clockText), SETTINGS.clockFormat == 1)) {
-    clockWidth = ui.target.measureText(fui::GfxRendererTarget::FONT_SMALL, clockText, tokens.smallText).width;
-  } else {
-    clockText[0] = '\0';
+  const char* activeLeftText = leftLabel;
+  int16_t leftTextWidth = 0;
+  if (activeLeftText != nullptr && *activeLeftText != '\0') {
+    leftTextWidth = ui.target.measureText(fui::GfxRendererTarget::FONT_SMALL, activeLeftText, tokens.smallText).width;
+  } else if (SETTINGS.clockShowInHeader && halClock.isAvailable() &&
+             halClock.formatTime(clockText, sizeof(clockText), SETTINGS.clockFormat == 1)) {
+    activeLeftText = clockText;
+    leftTextWidth = ui.target.measureText(fui::GfxRendererTarget::FONT_SMALL, activeLeftText, tokens.smallText).width;
   }
 
   fui::HeaderProps props;
@@ -358,14 +360,14 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
     } else {
       props.rightReserve = reserve;
     }
-    // The clock sits opposite the battery on the shared line; keep the title
+    // The left label / clock sits opposite the battery on the shared line; keep the title
     // clear of it too.
-    if (clockText[0] != '\0') {
-      const int16_t clockReserve = static_cast<int16_t>(clockWidth + tokens.spaceMd);
+    if (leftTextWidth > 0) {
+      const int16_t leftReserve = static_cast<int16_t>(leftTextWidth + tokens.spaceMd);
       if (batteryLeft) {
-        props.rightReserve = static_cast<int16_t>(props.rightReserve + clockReserve);
+        props.rightReserve = static_cast<int16_t>(props.rightReserve + leftReserve);
       } else {
-        props.leftReserve = static_cast<int16_t>(props.leftReserve + clockReserve);
+        props.leftReserve = static_cast<int16_t>(props.leftReserve + leftReserve);
       }
     }
   }
@@ -396,12 +398,12 @@ void BaseTheme::drawHeader(const GfxRenderer& renderer, Rect rect, const char* t
   const int16_t batteryH = static_cast<int16_t>(metrics.batteryBarHeight);
   fui::batteryIndicator(ui.frame, fui::Rect{batteryX, band.y, batteryReserve, batteryH}, battery);
 
-  if (clockText[0] != '\0') {
+  if (activeLeftText != nullptr && activeLeftText[0] != '\0') {
     // Same top strip and edge inset as the battery, mirrored to the other
     // side, so the two read as one balanced status line.
-    const int16_t clockX = batteryLeft ? static_cast<int16_t>(band.right() - batteryEdgeInset - clockWidth)
-                                       : static_cast<int16_t>(band.x + batteryEdgeInset);
-    ui.target.text(fui::Rect{clockX, band.y, clockWidth, batteryH}, clockText, tokens.smallText);
+    const int16_t textX = batteryLeft ? static_cast<int16_t>(band.right() - batteryEdgeInset - leftTextWidth)
+                                      : static_cast<int16_t>(band.x + batteryEdgeInset);
+    ui.target.text(fui::Rect{textX, band.y, leftTextWidth, batteryH}, activeLeftText, tokens.smallText);
   }
 
   if (manualRightLabel) {

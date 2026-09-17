@@ -43,6 +43,12 @@ class HalClock {
   // Returns false if RTC is not available.
   bool formatTime(char* buf, size_t bufSize, bool use12Hour = false) const;
 
+  // Format the local date and time into a caller-provided buffer ("DD-MM-YYYY HH:MM" or "DD-MM-YYYY H:MM AM").
+  // Needs >=24 bytes buffer size.
+  // use12Hour: when true, format time as 12-hour clock with AM/PM suffix.
+  // Returns false if RTC is not available.
+  bool formatDateTime(char* buf, size_t bufSize, bool use12Hour = false) const;
+
   // Sync the RTC from an NTP server. Requires WiFi to be connected.
   // Blocks for up to ~5s while waiting for SNTP response.
   // Returns true if the RTC was successfully updated.
